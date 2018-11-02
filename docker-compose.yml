@@ -1,0 +1,16 @@
+version: "3"
+services:
+  exercise4:
+    build: .
+    ports:
+     - "9004:9004"
+  messageapp:
+    image: cabify/backend-bootcamp-messageapp
+    ports:
+      - "3000:3000"
+  mongodb:
+    image: mongo
+    volumes:
+      - ./data/db:/data/db
+    ports:
+      - 27017:27017
