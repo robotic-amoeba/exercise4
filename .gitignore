@@ -1,0 +1,4 @@
+proxyService-messageapp/node_modules
+client-messageapp/node_modules
+proxyService-messageapp/database-service/node_modules/
+data/

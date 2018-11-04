@@ -1,16 +1,18 @@
-version: "3"
+version: '3'
 services:
-  exercise4:
-    build: .
+  exercise1:
+    build: ./proxyService-messageapp/.
     ports:
-     - "9004:9004"
+      - "9001:9001"
+    depends_on:
+      - "mongodb"
   messageapp:
-    image: cabify/backend-bootcamp-messageapp
+    image: "cabify/backend-bootcamp-messageapp:latest"
     ports:
       - "3000:3000"
   mongodb:
-    image: mongo
+    image: "mongo"
     volumes:
       - ./data/db:/data/db
     ports:
-      - 27017:27017
+      - "28017:28017"
