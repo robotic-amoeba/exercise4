@@ -15,6 +15,9 @@ app.use(limiter);
 const messaging = require('./routes/messaging');
 app.use('/message', messaging);
 
+const accounting = require('./routes/accounting');
+app.use('/credit', accounting);
+
 app.use(function (err, req, res, next) {
   console.log("Error catched in middleware: ", err)
   if (err instanceof SyntaxError) {

@@ -1,13 +1,16 @@
 const express = require('express');
 const router = express.Router();
-const DBservice = require('../database-service/DBservice');
-const myDBservice = new DBservice();
+
+const myDBservice = require('../database-service/DBservice');
+
 const uuidv1 = require('uuid/v1');
+
 const axios = require('axios');
 const messageAPP = axios.create({
   baseURL: 'http://messageapp:3000',
   timeout: 3000
 });
+
 
 
 router.post('/', (req, res) => {
@@ -17,22 +20,32 @@ router.post('/', (req, res) => {
     return;
   }
   const messageID = uuidv1();
-  const message = createInitialMessage(destination, body, messageID);
-  myDBservice.createMessageAttempt(message)
-  .then((success)=>{
-    if (success) {
+  const message = conformInitialMessage(destination, body, messageID);
+
+  const storeInDB = myDBservice.createMessageAttempt(message);
+  const creditEnough = myDBservice.checkIfEnoughCredit();
+
+  Promise.all([storeInDB, creditEnough])
+  .then((results)=>{
+    if (results[0] && results[1]) {
       reqToMessageAPP(destination, body)
         .then((messageStatus) => {
-          myDBservice.updateMessageStatus(messageID, messageStatus)
+          //cobrar solo cuando procede!
+          const updateStatus = myDBservice.updateMessageStatus(messageID, messageStatus);
+          const chargeMessage = myDBservice.chargeMessageInAccount();
+          Promise.all([updateStatus, chargeMessage])
           .then(()=>{
             res.status(200).send(messageStatus);
           })
+          .catch(e=>console.log(e))
         })
     } else {
       res.status(500).send("Server unavailable. Try again later");
     }
   })
 });
+
+
 
 router.get('/', (req, res, next) => {
   myDBservice.getMessages()
@@ -41,6 +54,7 @@ router.get('/', (req, res, next) => {
     })
     .catch(next);
 });
+
 
 function validateRequestParams(destination, body) {
   if (!destination || !body) {
@@ -51,7 +65,7 @@ function validateRequestParams(destination, body) {
   return true;
 }
 
-function createInitialMessage(destination, body, messageID){
+function conformInitialMessage(destination, body, messageID){
   const message = {
     destination,
     body,
