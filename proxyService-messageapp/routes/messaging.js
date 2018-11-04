@@ -12,7 +12,6 @@ const messageAPP = axios.create({
 });
 
 
-
 router.post('/', (req, res) => {
   const { destination, body } = req.body;
   if (!validateRequestParams(destination, body)) {
@@ -26,25 +25,38 @@ router.post('/', (req, res) => {
   const creditEnough = myDBservice.checkIfEnoughCredit();
 
   Promise.all([storeInDB, creditEnough])
-  .then((results)=>{
-    if (results[0] && results[1]) {
-      reqToMessageAPP(destination, body)
-        .then((messageStatus) => {
-          //cobrar solo cuando procede!
-          const updateStatus = myDBservice.updateMessageStatus(messageID, messageStatus);
-          const chargeMessage = myDBservice.chargeMessageInAccount();
-          Promise.all([updateStatus, chargeMessage])
-          .then(()=>{
-            res.status(200).send(messageStatus);
-          })
-          .catch(e=>console.log(e))
-        })
-    } else {
-      res.status(500).send("Server unavailable. Try again later");
-    }
-  })
-});
+  
+    .then((results) => {
+      if (results[0] && results[1]) {
+        reqToMessageAPP(destination, body)
+          .then((messageStatus) => {
 
+            if (messageStatus.code = "OK") {
+              const updateStatus = myDBservice.updateMessageStatus(messageID, messageStatus.status);
+              const chargeMessage = myDBservice.chargeMessageInAccount();
+
+              Promise.all([updateStatus, chargeMessage])
+                .then(() => {
+                  res.status(200).send(messageStatus.status);
+                })
+
+            } else {
+              myDBservice.updateMessageStatus(messageID, messageStatus.status)
+              .then(()=>{
+                res.status(500).send(messageStatus.status);
+              })
+            }
+          })
+
+      } else {
+        res.status(500).send("Unavailable. Check your credit and try again later");
+      }
+    })
+    .catch((e)=>{
+      console.log(e);
+      res.status(500).send("Server error")
+    })
+});
 
 
 router.get('/', (req, res, next) => {
@@ -65,7 +77,7 @@ function validateRequestParams(destination, body) {
   return true;
 }
 
-function conformInitialMessage(destination, body, messageID){
+function conformInitialMessage(destination, body, messageID) {
   const message = {
     destination,
     body,
@@ -81,20 +93,20 @@ function reqToMessageAPP(destination, body) {
     body
   })
     .then((response) => {
-      return messageStatus = `Deliver confirmed. Response: ${response.data}`;
+      return messageStatus = { code: "OK", status: `Deliver confirmed. Response: ${response.data}` };
     })
     .catch((error) => {
       let customError;
       if (error.response || error.request) {
         customError = "Error in messageapp";
-        messageStatus = "Not sent";
+        messageStatus = { code: "KO", status: "Not sent" };
         if (error.code && error.code === 'ECONNABORTED') {
           customError = "Error in messageapp. Timeout";
-          messageStatus = "Sent. Not confirmed.";
+          messageStatus = { code: "OK", code: "Sent. Not confirmed." };
         }
       } else {
         customError = "Server error";
-        messageStatus = "Not sent";
+        messageStatus = { code: "KO", status: "Not sent" };
       }
       console.log(customError);
       return messageStatus;
