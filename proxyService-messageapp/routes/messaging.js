@@ -20,12 +20,13 @@ router.post('/', (req, res) => {
   }
   const messageID = uuidv1();
   const message = conformInitialMessage(destination, body, messageID);
+  const accountLocked = myDBservice.checkAccountLock();
 
   const storeInDB = myDBservice.createMessageAttempt(message);
   const creditEnough = myDBservice.checkIfEnoughCredit();
 
   Promise.all([storeInDB, creditEnough])
-  
+
     .then((results) => {
       if (results[0] && results[1]) {
         reqToMessageAPP(destination, body)
@@ -66,7 +67,6 @@ router.get('/', (req, res, next) => {
     })
     .catch(next);
 });
-
 
 function validateRequestParams(destination, body) {
   if (!destination || !body) {

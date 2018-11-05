@@ -80,7 +80,6 @@ class DBservice {
     return Account.findOne({ accountID })
       .then((wallet) => {
         if (wallet.credit >= this.messagePrice) {
-          //block account-----------------------------------
           this.creditBalance = wallet.credit;
           console.log("Enough credit found: ", wallet.credit)
           return true;
@@ -96,9 +95,6 @@ class DBservice {
     const price = this.messagePrice;
     const finalBalance = this.creditBalance - price;
     return Account.findOneAndUpdate({ accountID }, { credit: finalBalance }, { new: true })
-      .then((updatedAccount) => {
-        console.log("New balance un account: ", updatedAccount.credit);
-      })
       .catch(e => console.log(e))
   }
 
@@ -108,10 +104,14 @@ class DBservice {
       .then((wallet) => {
         const oldBalance = wallet.credit;
         const newBalance = oldBalance + deposit;
-        Account.findOneAndUpdate({ accountID }, { credit: newBalance, locked: false }, {new: true})
-        .then(updated=>console.log("Updated the credit: ", updated.credit))
+        Account.findOneAndUpdate({ accountID }, { credit: newBalance, locked: false }, { new: true })
       })
       .catch(e => console.log(e))
+  }
+
+  switchAccountLockTo(boolean) {
+    const accountID = this.accountID;
+    findOneAndUpdate({ accountID }, {locked: boolean})
   }
 }
 
