@@ -7,7 +7,8 @@ const uuidv1 = require("uuid/v1");
 
 const axios = require("axios");
 const messageAPP = axios.create({
-  baseURL: "http://messageapp:3000",
+  //baseURL: "http://messageapp:3000",
+  baseURL: "http://localhost:3000",
   timeout: 3000
 });
 
@@ -19,12 +20,17 @@ router.post("/", (req, res) => {
     return;
   }
 
-  const accountLocked = myDBservice.checkAccountLock();
-  if (accountLocked) {
-    handleRetriesOnMessaging(5, req, res);
-  } else {
-    handleMessagingOperation(req, res);
-  }
+  //myDBservice.unlockAccount();
+  myDBservice
+    .checkAccountLock()
+    .then(account => {
+      if (account.locked) {
+        handleRetriesOnMessaging(5, req, res);
+      } else {
+        handleMessagingOperation(req, res);
+      }
+    })
+    .catch(e => console.log(e));
 });
 
 router.get("/", (req, res, next) => {
@@ -55,10 +61,12 @@ function handleMessagingOperation(req, res) {
             const chargeMessage = myDBservice.chargeMessageInAccount();
 
             Promise.all([updateStatus, chargeMessage]).then(() => {
+              myDBservice.unlockAccount();
               res.status(200).send(messageStatus.status);
             });
           } else {
             myDBservice.updateMessageStatus(messageID, messageStatus.status).then(() => {
+              myDBservice.unlockAccount();
               res.status(500).send(messageStatus.status);
             });
           }
@@ -74,15 +82,22 @@ function handleMessagingOperation(req, res) {
 }
 
 function handleRetriesOnMessaging(retries, req, res) {
-  const accountLocked = myDBservice.checkAccountLock();
-  if (accountLocked || retries !== 0) {
-    retries--;
-    return handleRetriesOnMessaging(retries);
-  } else if (!accountLocked) {
-    handleMessagingOperation(req, res);
-  } else {
-    res.status(500).send("Server error");
-  }
+  myDBservice
+    .checkAccountLock()
+    .then(account => {
+      if (account.locked && retries !== 0) {
+        retries--;
+        console.log("retrying in handle");
+        setTimeout(() => {
+          handleRetriesOnMessaging(retries, req, res);
+        }, 1000);
+      } else if (!account.locked) {
+        handleMessagingOperation(req, res);
+      } else {
+        res.status(500).send("Server error");
+      }
+    })
+    .catch(e => console.log(e));
 }
 
 function validateRequestParams(destination, body) {

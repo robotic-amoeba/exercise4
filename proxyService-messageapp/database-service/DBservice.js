@@ -31,7 +31,7 @@ class DBservice {
       status
     })
       .then(data => {
-        console.log("created entry: ", data);
+        //console.log("created entry: ", data);
         return true;
       })
       .catch(error => {
@@ -62,7 +62,7 @@ class DBservice {
   setInitialBalance(accountID) {
     return Account.findOne({ accountID }).then(wallet => {
       if (wallet) {
-        console.log("Wallet found in DB: ", wallet);
+        //console.log("Wallet found in DB: ", wallet);
         return;
       } else {
         return Account.create({
@@ -71,7 +71,7 @@ class DBservice {
           locked: false
         })
           .then(data => {
-            console.log("Opened new wallet: ", data);
+            //console.log("Opened new wallet: ", data);
           })
           .catch(e => console.log(e));
       }
@@ -111,19 +111,29 @@ class DBservice {
           { accountID },
           { credit: newBalance, locked: false },
           { new: true }
-        );
+        ).then(newWallet => console.log("New balance in account: ", newWallet.credit));
       })
       .catch(e => console.log(e));
   }
 
   checkAccountLock() {
     const accountID = this.accountID;
-    Account.findOneAndUpdate({ accountID }, { locked: true }).then(oldAccount => {
-      return oldAccount.locked;
-    });
+    return Account.findOneAndUpdate({ accountID }, { locked: true })
+      .then(oldAccount => {
+        console.log("Check if lock: ", oldAccount.locked);
+        return oldAccount;
+      })
+      .catch(e => console.log(e));
+  }
+
+  unlockAccount() {
+    const accountID = this.accountID;
+    return Account.findOneAndUpdate({ accountID }, { locked: false })
+      .then(() => console.log("Unlocked"))
+      .catch(e => console.log(e));
   }
 }
 
 const accountID = "secretAndUniqueIDHere";
-const myDBservice = new DBservice("mongodb://mongodb:27017/messagingCabify", accountID, 1, 5);
+const myDBservice = new DBservice("mongodb://localhost:27017/messagingCabify", accountID, 1, 5);
 module.exports = myDBservice;

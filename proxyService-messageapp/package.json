@@ -11,6 +11,7 @@
     "axios": "0.18.0",
     "body-parser": "1.18.3",
     "connect-timeout": "^1.9.0",
+    "debug": "^4.1.0",
     "express": "^4.16.4",
     "express-rate-limit": "^3.3.0",
     "uuid": "^3.3.2"
