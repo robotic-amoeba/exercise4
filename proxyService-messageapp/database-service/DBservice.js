@@ -1,17 +1,20 @@
-const mongoose = require('mongoose');
-const Message = require('./models/Message');
-const Account = require('./models/Account');
+const mongoose = require("mongoose");
+const Message = require("./models/Message");
+const Account = require("./models/Account");
 let retryCount = 5;
 
 class DBservice {
-
   constructor(DBurl, accountID, messagePrice, initialCredit) {
-    this.conection = mongoose.connect(DBurl, { useNewUrlParser: true })
+    this.conection = mongoose
+      .connect(
+        DBurl,
+        { useNewUrlParser: true }
+      )
       .then(x => {
         console.log(`Connected to Mongo! Database name: "${x.connections[0].name}"`);
       })
       .catch(err => {
-        console.error('Error connecting to mongo', err);
+        console.error("Error connecting to mongo", err);
       });
     this.messagePrice = messagePrice;
     this.creditBalance = initialCredit;
@@ -27,11 +30,11 @@ class DBservice {
       messageID,
       status
     })
-      .then((data) => {
-        console.log("created entry: ", data)
+      .then(data => {
+        console.log("created entry: ", data);
         return true;
       })
-      .catch((error) => {
+      .catch(error => {
         if (retryCount > 0) {
           retryCount -= 1;
           console.log(retryCount);
@@ -41,82 +44,86 @@ class DBservice {
           retryCount = 5;
           return false;
         }
-      })
+      });
   }
 
   updateMessageStatus(messageID, messageStatus) {
     return Message.findOneAndUpdate({ messageID }, { status: messageStatus }, { new: true })
-      .then((data) => {
+      .then(data => {
         console.log("updated entry: ", data);
       })
-      .catch(e => console.log(e))
+      .catch(e => console.log(e));
   }
 
   getMessages() {
-    return Message.find()
-      .catch(e => console.log(e))
+    return Message.find().catch(e => console.log(e));
   }
 
   setInitialBalance(accountID) {
-    return Account.findOne({ accountID })
-      .then((wallet) => {
-        if (wallet) {
-          console.log("Wallet found in DB: ", wallet);
-          return;
-        } else {
-          return Account.create({
-            accountID: this.accountID,
-            credit: this.creditBalance,
-            locked: false
+    return Account.findOne({ accountID }).then(wallet => {
+      if (wallet) {
+        console.log("Wallet found in DB: ", wallet);
+        return;
+      } else {
+        return Account.create({
+          accountID: this.accountID,
+          credit: this.creditBalance,
+          locked: false
+        })
+          .then(data => {
+            console.log("Opened new wallet: ", data);
           })
-            .then((data) => { console.log("Opened new wallet: ", data) })
-            .catch(e => console.log(e))
-        }
-      })
+          .catch(e => console.log(e));
+      }
+    });
   }
 
   checkIfEnoughCredit() {
     const accountID = this.accountID;
-    return Account.findOne({ accountID })
-      .then((wallet) => {
-        if (wallet.credit >= this.messagePrice) {
-          this.creditBalance = wallet.credit;
-          console.log("Enough credit found: ", wallet.credit)
-          return true;
-        } else {
-          console.log("Not enough credit")
-          return false;
-        }
-      })
+    return Account.findOne({ accountID }).then(wallet => {
+      if (wallet.credit >= this.messagePrice) {
+        this.creditBalance = wallet.credit;
+        console.log("Enough credit found: ", wallet.credit);
+        return true;
+      } else {
+        console.log("Not enough credit");
+        return false;
+      }
+    });
   }
 
   chargeMessageInAccount() {
     const accountID = this.accountID;
     const price = this.messagePrice;
     const finalBalance = this.creditBalance - price;
-    return Account.findOneAndUpdate({ accountID }, { credit: finalBalance }, { new: true })
-      .catch(e => console.log(e))
+    return Account.findOneAndUpdate({ accountID }, { credit: finalBalance }, { new: true }).catch(
+      e => console.log(e)
+    );
   }
 
   incrementCredit(deposit) {
     const accountID = this.accountID;
     return Account.findOneAndUpdate({ accountID }, { locked: true }, { new: true })
-      .then((wallet) => {
+      .then(wallet => {
         const oldBalance = wallet.credit;
         const newBalance = oldBalance + deposit;
-        Account.findOneAndUpdate({ accountID }, { credit: newBalance, locked: false }, { new: true })
+        Account.findOneAndUpdate(
+          { accountID },
+          { credit: newBalance, locked: false },
+          { new: true }
+        );
       })
-      .catch(e => console.log(e))
+      .catch(e => console.log(e));
   }
 
-  switchAccountLockTo(boolean) {
+  checkAccountLock() {
     const accountID = this.accountID;
-    findOneAndUpdate({ accountID }, {locked: boolean})
+    Account.findOneAndUpdate({ accountID }, { locked: true }).then(oldAccount => {
+      return oldAccount.locked;
+    });
   }
 }
 
-const accountID = 'secretAndUniqueIDHere';
-const myDBservice = new DBservice('mongodb://mongodb:27017/messagingCabify', accountID, 1, 5);
+const accountID = "secretAndUniqueIDHere";
+const myDBservice = new DBservice("mongodb://mongodb:27017/messagingCabify", accountID, 1, 5);
 module.exports = myDBservice;
-
-
